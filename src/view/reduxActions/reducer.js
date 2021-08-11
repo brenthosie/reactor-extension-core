@@ -14,12 +14,15 @@ import reduceReducers from 'reduce-reducers';
 import { reducer as formReducer } from 'redux-form';
 import bridgeAdapterActions from './bridgeAdapterActions';
 
-export default reduceReducers(
-  bridgeAdapterActions,
+export default function (viewReducer) {
+  return reduceReducers(
+    bridgeAdapterActions,
+    viewReducer,
 
-  // Setup for redux-form.
-  (state, action) => ({
-    ...state,
-    form: formReducer(state.form, action)
-  })
-);
+    // Setup for redux-form.
+    (state, action) => ({
+      ...state,
+      form: formReducer(state.form, action)
+    })
+  );
+}

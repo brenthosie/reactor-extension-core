@@ -30,19 +30,24 @@ export default (
   extensionBridge = window.extensionBridge,
   viewProps
 ) => {
+  let viewReducer = (state) => state;
+  if (typeof formConfig.getReducer === 'function') {
+    console.log('found a view reducer')
+    viewReducer = formConfig.getReducer;
+  }
   const store = createStore(
-    reducer,
+    reducer(viewReducer()),
     {},
     window.__REDUX_DEVTOOLS_EXTENSION__ && window.__REDUX_DEVTOOLS_EXTENSION__()
   );
 
-  const ViewWrapper = ({ initializedByBridge, error, ...rest }) =>
-    initializedByBridge ? (
+  const ViewWrapper = ({ error, ...rest }) =>
+    rest.initializedByBridge ? (
       <View {...rest} componentsWithErrors={error || []} />
     ) : null;
 
-  const ReduxView = connect(({ initializedByBridge }) => ({
-    initializedByBridge
+  const ReduxView = connect((state) => ({
+    ...state
   }))(ViewWrapper);
 
   const { validate: formConfigValidate } = formConfig;
