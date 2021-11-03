@@ -36,7 +36,7 @@ const ConnectedWrappedField = ({
   errorTooltipPlacement
 }) => (
   // Props contain not only the specific props we provide, but also all the props that redux-form
-  // passses as well. For this reason, we'll be specific on which props we pass through.
+  // passes as well. For this reason, we'll be specific on which props we pass through.
   <WrappedField
     className={className}
     name={name}

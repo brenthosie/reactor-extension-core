@@ -59,6 +59,19 @@ export default (extensionBridge, store, formConfig) => {
       store.dispatch(submit('default'));
 
       return isValid('default')(store.getState());
+    },
+    delayValidatedSave() {
+      if (
+        typeof formConfig.delayValidatedSave === 'function' &&
+        this.validate()
+      ) {
+        const confirmMessage = formConfig.delayValidatedSave();
+        if (typeof confirmMessage === 'string' && confirmMessage.length) {
+          return confirmMessage;
+        }
+
+        return undefined;
+      }
     }
   });
 };

@@ -10,59 +10,127 @@
  * governing permissions and limitations under the License.
  ****************************************************************************************/
 
-import React, { useState } from 'react';
+import React from 'react';
 import { connect } from 'react-redux';
-import { Item, TabList, TabPanels, Tabs } from '@adobe/react-spectrum';
-import { createAction, handleActions } from 'redux-actions';
-import { FieldArray } from 'redux-form';
+import {
+  Item,
+  ActionButton,
+  TabList,
+  TabPanels,
+  Tabs,
+  TextField,
+  Flex,
+  Well
+} from '@adobe/react-spectrum';
+import CloseIcon from '@spectrum-icons/workflow/Close';
+import { createAction } from 'redux-actions';
+import { FieldArray, getFormValues } from 'redux-form';
 import EditorButton from '../components/editorButton';
 import FullWidthField from '../components/fullWidthField';
 import InfoTip from '../components/infoTip';
 import WrappedField from '../components/wrappedField';
+import './directCall.styl';
 
+const VIEW_MODE_SIMPLE = 'simple';
+const VIEW_MODE_ADVANCED = 'advanced';
 const ACTION_SET_VIEW_PREFERENCE = 'actions/directCall/SET_VIEW_PREFERENCE';
 const ACTION_DELAY_SAVE = 'actions/directCall/DELAY_SAVE';
 const actions = {
   setViewPreference: createAction(ACTION_SET_VIEW_PREFERENCE)
 };
 
+const FORWARD_SLASH = 0x2215;
+const OPENING_CURLY = 0x007b;
+const CLOSING_CURLY = 0x007d;
+const COLON = 0x003a;
+const SEMICOLON = 0x003b;
+
 const SimpleViewRows = ({ fields }) => {
   return (
     <>
-      {fields.map((field) => (
-        <input type="text" value={field.value} />
-      ))}
-      <button type="button" onClick={() => fields.push({})}>
-        add field
-      </button>
+      <Well className="simpleForm">
+        <span className="codeLine">
+          <em>
+            {String.fromCharCode(FORWARD_SLASH)}&nbsp;
+            {String.fromCharCode(FORWARD_SLASH)}&nbsp; enhances the direct call
+            this information
+          </em>
+        </span>
+        <span className="codeLine">
+          const detail = {String.fromCharCode(OPENING_CURLY)}
+        </span>
+        {fields.map((detailRow, index) => (
+          <Flex
+            key={detailRow}
+            gap="size-100"
+            width="100%"
+            margin="size-200"
+            alignItems="center"
+          >
+            <WrappedField
+              name={`${detailRow}.key`}
+              type="text"
+              component={TextField}
+              placeholder="key"
+              supportDataElement
+            />
+            <span className="codeText">{String.fromCharCode(COLON)}</span>
+            <WrappedField
+              name={`${detailRow}.value`}
+              type="text"
+              component={TextField}
+              placeholder="value"
+              supportDataElement
+            />
+            <ActionButton
+              aria-label="Delete"
+              isQuiet
+              onPress={() => {
+                fields.remove(index);
+                if (fields.length === 1) {
+                  fields.push({});
+                }
+              }}
+            >
+              <CloseIcon size="XS" />
+            </ActionButton>
+          </Flex>
+        ))}
+        <span className="codeLine">
+          {String.fromCharCode(CLOSING_CURLY)}
+          {String.fromCharCode(SEMICOLON)}
+        </span>
+        <span className="codeLine">
+          return detail{String.fromCharCode(SEMICOLON)}
+        </span>
+      </Well>
+      <ActionButton marginTop="size-200" onPress={() => fields.push({})}>
+        Add Field
+      </ActionButton>
     </>
   );
 };
 
-const DirectCall = ({ dispatch, selectedView }) => {
-  const [selectedTab, setSelectedTab] = useState('simple');
-  React.useEffect(() => {
-    dispatch(actions.setViewPreference('simple'));
-  }, []);
-
+const DirectCall = ({ dispatch, selectedView, meta }) => {
   if (!selectedView) {
     return null;
   }
 
+  console.log('meta in render:', meta);
   return (
-    <>
+    <div className="directCall">
       <h1>hello world</h1>
       <Tabs
-        selectedKey={selectedTab}
-        onSelectionChange={setSelectedTab}
+        selectedKey={selectedView}
+        onSelectionChange={(view) => dispatch(actions.setViewPreference(view))}
         height="100%"
       >
         <TabList>
-          <Item key="simple">Simple Mode</Item>
-          <Item key="advanced">Advanced Mode</Item>
+          <Item key={VIEW_MODE_SIMPLE}>Simple Mode</Item>
+          <Item key={VIEW_MODE_ADVANCED}>Advanced Mode</Item>
         </TabList>
         <TabPanels>
-          <Item key="simple">
+          <Item key={VIEW_MODE_SIMPLE}>
             <FullWidthField
               label="Direct Call Identifier"
               name="identifier"
@@ -75,7 +143,7 @@ const DirectCall = ({ dispatch, selectedView }) => {
               name="simpleViewObjectEntries"
             />
           </Item>
-          <Item key="advanced">
+          <Item key={VIEW_MODE_ADVANCED}>
             <FullWidthField
               label="Direct Call Identifier"
               name="identifier"
@@ -101,13 +169,17 @@ const DirectCall = ({ dispatch, selectedView }) => {
           </Item>
         </TabPanels>
       </Tabs>
-    </>
+    </div>
   );
 };
 
-const mapStateToProps = ({ directCallAction = {} }) => ({
-  ...directCallAction
-});
+const mapStateToProps = (state) => {
+  const { loadedViewData = {} } = state;
+  return {
+    ...loadedViewData,
+    formValues: getFormValues('default')(state)
+  };
+};
 export default connect(mapStateToProps)(DirectCall);
 
 export const formConfig = {
@@ -128,7 +200,8 @@ export const formConfig = {
       ...values
     };
   },
-  validate(errors, values) {
+  validate(errors, values, meta) {
+    console.log('meta in validate:', meta);
     errors = {
       ...errors
     };
@@ -141,28 +214,26 @@ export const formConfig = {
 
     return errors;
   },
-  getReducer() {
-    return handleActions(
-      {
-        [ACTION_SET_VIEW_PREFERENCE]: (
-          { directCallAction = {}, ...state },
-          action
-        ) => ({
+  viewReducer: (
+    state = {
+      selectedView: 'simple',
+      hasDelayedSave: false
+    },
+    action
+  ) => {
+    switch (action.type) {
+      case ACTION_SET_VIEW_PREFERENCE:
+        console.log(action.payload);
+        return {
           ...state,
-          directCallAction: {
-            ...directCallAction,
-            selectedView: action.payload
-          }
-        }),
-        [ACTION_DELAY_SAVE]: ({ directCallAction = {}, ...state }) => ({
-          ...state,
-          directCallAction: {
-            ...directCallAction,
-            hasDelayedSave: true
-          }
-        })
-      },
-      {}
-    );
+          selectedView: action.payload
+        };
+      case ACTION_DELAY_SAVE:
+        return {
+          hasDelayedSave: true
+        };
+      default:
+        return state;
+    }
   }
 };

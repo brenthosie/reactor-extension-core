@@ -14,12 +14,13 @@
 /*eslint no-underscore-dangle: 0*/
 
 import React from 'react';
+import logger from 'redux-logger';
+import { Provider, connect } from 'react-redux';
+import { createStore, compose, applyMiddleware } from 'redux';
 import {
   Provider as ProviderReactSpectrum,
   lightTheme
 } from '@adobe/react-spectrum';
-import { Provider, connect } from 'react-redux';
-import { createStore } from 'redux';
 import { reduxForm } from 'redux-form';
 import reducer from './reduxActions/reducer';
 import bridgeAdapter from './bridgeAdapter';
@@ -31,15 +32,15 @@ export default (
   viewProps
 ) => {
   let viewReducer = (state) => state;
-  if (typeof formConfig.getReducer === 'function') {
-    console.log('found a view reducer')
-    viewReducer = formConfig.getReducer;
+  if (typeof formConfig.viewReducer === 'function') {
+    viewReducer = formConfig.viewReducer;
   }
-  const store = createStore(
-    reducer(viewReducer()),
-    {},
+
+  // TODO: rip this out
+  const store = compose(
+    applyMiddleware(logger),
     window.__REDUX_DEVTOOLS_EXTENSION__ && window.__REDUX_DEVTOOLS_EXTENSION__()
-  );
+  )(createStore)(reducer(viewReducer));
 
   const ViewWrapper = ({ error, ...rest }) =>
     rest.initializedByBridge ? (
@@ -65,6 +66,9 @@ export default (
   })(ReduxView);
 
   bridgeAdapter(extensionBridge, store, formConfig);
+
+  // TODO: rip this out
+  window.store = store;
 
   return (
     <Provider store={store}>

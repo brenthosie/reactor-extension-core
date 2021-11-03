@@ -14,15 +14,17 @@ import reduceReducers from 'reduce-reducers';
 import { reducer as formReducer } from 'redux-form';
 import bridgeAdapterActions from './bridgeAdapterActions';
 
-export default function (viewReducer) {
-  return reduceReducers(
+export default (viewReducer) =>
+  reduceReducers(
     bridgeAdapterActions,
-    viewReducer,
 
     // Setup for redux-form.
     (state, action) => ({
       ...state,
       form: formReducer(state.form, action)
+    }),
+    (state, action) => ({
+      ...state,
+      loadedViewData: viewReducer(state.loadedViewData, action) // state area for the current view
     })
   );
-}
