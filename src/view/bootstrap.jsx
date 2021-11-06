@@ -22,7 +22,7 @@ import {
   lightTheme
 } from '@adobe/react-spectrum';
 import { reduxForm } from 'redux-form';
-import reducer from './reduxActions/reducer';
+import reducer, { LOADED_VIEW_DATA_STATE_KEY } from './reduxActions/reducer';
 import bridgeAdapter from './bridgeAdapter';
 
 export default (
@@ -52,6 +52,13 @@ export default (
   }))(ViewWrapper);
 
   const { validate: formConfigValidate } = formConfig;
+  const getFocusedState = () => {
+    const state = store.getState();
+    return {
+      meta: state.meta,
+      [LOADED_VIEW_DATA_STATE_KEY]: state[LOADED_VIEW_DATA_STATE_KEY]
+    };
+  };
 
   const ReduxFormView = reduxForm({
     form: 'default',
@@ -59,7 +66,9 @@ export default (
     // Note that there's no technical reason why config.validate must be a reducer. It does
     // maintain some consistency with settingsToFormValues and formValuesToSettings.
     validate: formConfigValidate
-      ? (values) => formConfigValidate({}, values, store.getState().meta)
+      ? (values) => {
+          formConfigValidate({}, values, getFocusedState);
+        }
       : undefined,
     // ReduxForm will complain with we try to "submit" the form and don't have onSubmit defined.
     onSubmit: () => {}

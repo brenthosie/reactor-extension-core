@@ -14,6 +14,11 @@ import reduceReducers from 'reduce-reducers';
 import { reducer as formReducer } from 'redux-form';
 import bridgeAdapterActions from './bridgeAdapterActions';
 
+export const LOADED_VIEW_DATA_STATE_KEY = 'loadedViewData';
+export const getCurrentViewPropsFromState = (state) => {
+  return state[LOADED_VIEW_DATA_STATE_KEY];
+};
+
 export default (viewReducer) =>
   reduceReducers(
     bridgeAdapterActions,
@@ -25,6 +30,10 @@ export default (viewReducer) =>
     }),
     (state, action) => ({
       ...state,
-      loadedViewData: viewReducer(state.loadedViewData, action) // state area for the current view
+      // state area for the current view
+      [LOADED_VIEW_DATA_STATE_KEY]: viewReducer(
+        state[LOADED_VIEW_DATA_STATE_KEY],
+        action
+      )
     })
   );

@@ -47,6 +47,7 @@ export default (...formConfigs) => {
       );
     },
     validate(errors, values, state) {
+      // TODO: this confuses me. I did not expect to find a state reference in here yet
       return validateFunctions.reduce(
         (reducedErrors, validate) => validate(reducedErrors, values, state),
         errors

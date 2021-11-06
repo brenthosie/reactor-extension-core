@@ -14,6 +14,7 @@
 
 import { getFormValues, initialize, change, submit, isValid } from 'redux-form';
 import { actionCreators } from './reduxActions/bridgeAdapterActions';
+import {LOADED_VIEW_DATA_STATE_KEY} from './reduxActions/reducer';
 
 export default (extensionBridge, store, formConfig) => {
   extensionBridge.register({
@@ -42,13 +43,22 @@ export default (extensionBridge, store, formConfig) => {
       store.dispatch(actionCreators.markInitComplete());
     },
     getSettings() {
-      const state = store.getState();
       // This sometimes returns undefined: https://github.com/erikras/redux-form/issues/2017
-      const values = getFormValues('default')(state) || {};
+      const values = getFormValues('default')(store.getState()) || {};
 
       delete values['__bogusname__'];
 
-      return formConfig.formValuesToSettings({}, values, state.meta);
+      const getFocusedState = () => {
+        const state = store.getState();
+        const finalState = {
+          meta: state.meta,
+          [LOADED_VIEW_DATA_STATE_KEY]: state[LOADED_VIEW_DATA_STATE_KEY]
+        };
+        return finalState;
+      };
+
+      const settingsTranslated = formConfig.formValuesToSettings({}, values, getFocusedState);
+      return settingsTranslated;
     },
     validate() {
       // Workaround for https://github.com/erikras/redux-form/issues/1477
@@ -57,7 +67,6 @@ export default (extensionBridge, store, formConfig) => {
       store.dispatch(change('default', '__bogusname__', '__bogusvalue__'));
 
       store.dispatch(submit('default'));
-
       return isValid('default')(store.getState());
     },
     delayValidatedSave() {

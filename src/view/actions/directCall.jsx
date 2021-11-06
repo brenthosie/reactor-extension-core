@@ -25,6 +25,8 @@ import {
 import CloseIcon from '@spectrum-icons/workflow/Close';
 import { createAction } from 'redux-actions';
 import { FieldArray, getFormValues } from 'redux-form';
+import { isPlainObject } from 'is-plain-object';
+import { LOADED_VIEW_DATA_STATE_KEY, getCurrentViewPropsFromState } from '../reduxActions/reducer';
 import EditorButton from '../components/editorButton';
 import FullWidthField from '../components/fullWidthField';
 import InfoTip from '../components/infoTip';
@@ -111,12 +113,13 @@ const SimpleViewRows = ({ fields }) => {
   );
 };
 
-const DirectCall = ({ dispatch, selectedView, meta }) => {
+const DirectCall = ({ dispatch, selectedView, initialValues, meta }) => {
   if (!selectedView) {
     return null;
   }
 
   console.log('meta in render:', meta);
+  console.log('initialValues in render:', initialValues);
   return (
     <div className="directCall">
       <h1>hello world</h1>
@@ -177,46 +180,137 @@ const mapStateToProps = (state) => {
   const { loadedViewData = {} } = state;
   return {
     ...loadedViewData,
+    initialValues: {
+      identifier: 'default identifier',
+      simpleViewObjectEntries: [{ key: 'hello', value: 'world' }]
+    },
     formValues: getFormValues('default')(state)
   };
 };
 export default connect(mapStateToProps)(DirectCall);
 
-export const formConfig = {
-  settingsToFormValues(values, settings) {
-    const simpleViewObjectEntries = settings.simpleViewObjectEntries || [];
-    if (!simpleViewObjectEntries.length) {
-      simpleViewObjectEntries.push({});
+const filterEmptySimpleViewRows = (simpleViewObjectEntries) => {
+  const sanitized = {};
+  if (!simpleViewObjectEntries?.length) {
+    return sanitized;
+  }
+
+  return simpleViewObjectEntries.reduce((entries, nextRow) => {
+    const { key, value } = nextRow;
+    if (key?.length && value?.length) {
+      return {
+        ...entries,
+        [key]: value
+      };
     }
+    return entries;
+  }, sanitized);
+};
+
+const settingsResembleSimpleForm = (settings) => {
+  try {
+    const detail = JSON.parse(settings.detail);
+    return detail != null && isPlainObject(detail);
+  } catch (e) {
+    // fall through to false
+  }
+
+  return false;
+};
+
+const decorateSimpleFormSettings = (settings) => {
+  // if (settingsResembleSimpleForm(settings)) {
+  //   const detail = JSON.parse(settings.detail);
+  //   return {
+  //     ...settings,
+  //     simpleViewObjectEntries: Object.entries(detail).map(([key, value]) => ({
+  //       key,
+  //       value
+  //     }))
+  //   };
+  // }
+
+  return {
+    ...settings,
+    // identifier: 'default identifier',
+    identifier: '',
+    simpleViewObjectEntries: [{ key: 'hello', value: 'world' }]
+    // simpleViewObjectEntries: [{}]
+  };
+};
+
+const decorateAdvancedFormSettings = (settings) => {
+  if (!settingsResembleSimpleForm(settings)) {
     return {
+      ...settings,
+      advancedFormJavascript: settings.detail
+    };
+  }
+
+  return {
+    ...settings,
+    advancedFormJavascript: ''
+  };
+};
+
+export const formConfig = {
+  // todo _settings is probably dumb. how to make this more clear?
+  settingsToFormValues(values, _settings) {
+    let formSettings = { ..._settings };
+    formSettings = decorateSimpleFormSettings(formSettings);
+    formSettings = decorateAdvancedFormSettings(formSettings);
+
+    const reconciledValues = {
       ...values,
-      ...settings,
-      simpleViewObjectEntries
+      ...formSettings
     };
+    delete reconciledValues.detail;
+    return reconciledValues;
   },
-  formValuesToSettings(settings, values) {
-    return {
+  formValuesToSettings(settings, values, getState) {
+    const props = getCurrentViewPropsFromState(getState());
+    let detail;
+
+    if (props.selectedView === VIEW_MODE_SIMPLE) {
+      detail = filterEmptySimpleViewRows(values.simpleViewObjectEntries);
+    } else {
+      detail = values.advancedFormJavascript;
+    }
+
+    const finalSettings = {
       ...settings,
-      ...values
+      identifier: values.identifier,
+      detail
     };
+    return finalSettings;
   },
-  validate(errors, values, meta) {
-    console.log('meta in validate:', meta);
-    errors = {
-      ...errors
-    };
+  validate(errors, values, getState) {
+    errors = { ...errors };
+    const props = getCurrentViewPropsFromState(getState());
 
     if (!values.identifier) {
       errors.identifier = 'Please specify an identifier.';
     }
 
-    // values.detail is optional, so skip its validation
+    if (props.selectedView === VIEW_MODE_SIMPLE) {
+      values.simpleViewObjectEntries?.forEach((row, index) => {
+        if (!row.key?.length) {
+          errors[`simpleViewObjectEntries[${index}].key`] = 'This is required';
+        }
+        if (!row.value?.length) {
+          errors[`simpleViewObjectEntries[${index}].value`] =
+            'This is required';
+        }
+      });
+    } else {
+      // todo: something here
+    }
 
     return errors;
   },
   viewReducer: (
     state = {
-      selectedView: 'simple',
+      selectedView: VIEW_MODE_SIMPLE,
       hasDelayedSave: false
     },
     action
