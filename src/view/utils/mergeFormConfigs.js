@@ -32,26 +32,28 @@ export default (...formConfigs) => {
     .filter(isFunction);
 
   return {
-    settingsToFormValues(values, settings, state) {
+    settingsToFormValues(values, settings, getState) {
       return settingsToFormValuesFunctions.reduce(
         (reducedValues, settingsToFormValues) =>
-          settingsToFormValues(reducedValues, settings, state),
+          settingsToFormValues(reducedValues, settings, getState),
         values
       );
     },
-    formValuesToSettings(settings, values, state) {
+    formValuesToSettings(settings, values, getState) {
       return formValuesToSettingsFunctions.reduce(
         (reducedSettings, formValuesToSettings) =>
-          formValuesToSettings(reducedSettings, values, state),
+          formValuesToSettings(reducedSettings, values, getState),
         settings
       );
     },
-    validate(errors, values, state) {
+    validate(errors, values, getState) {
       // TODO: this confuses me. I did not expect to find a state reference in here yet
-      return validateFunctions.reduce(
-        (reducedErrors, validate) => validate(reducedErrors, values, state),
+      const isValid = validateFunctions.reduce(
+        (reducedErrors, validate) => validate(reducedErrors, values, getState),
         errors
       );
+      debugger
+      return isValid;
     }
   };
 };

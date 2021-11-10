@@ -56,13 +56,13 @@ const stateToProps = (state) => ({
 export default connect(stateToProps)(ElementFilter);
 
 export const formConfig = mergeFormConfigs(specificElementsFormConfig, {
-  settingsToFormValues: (values, settings, state) => {
+  settingsToFormValues: (values, settings, getState) => {
     const { elementSelector, elementProperties } = settings;
 
     return {
       ...values,
       elementSpecificity:
-        state.meta.isNew || elementSelector || elementProperties
+        getState().meta.isNew || elementSelector || elementProperties
           ? 'specific'
           : 'any'
     };

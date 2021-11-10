@@ -28,11 +28,11 @@ const NewReturningVisitor = () => (
 export default NewReturningVisitor;
 
 export const formConfig = {
-  settingsToFormValues(values, settings, state) {
+  settingsToFormValues(values, settings, getState) {
     return {
       ...values,
       visitorType:
-        state.meta.isNew || settings.isNewVisitor ? 'new' : 'returning'
+        getState().meta.isNew || settings.isNewVisitor ? 'new' : 'returning'
     };
   },
   formValuesToSettings(settings, values) {

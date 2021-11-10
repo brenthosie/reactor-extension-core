@@ -33,7 +33,7 @@ export default (extensionBridge, store, formConfig) => {
       const initialValues = formConfig.settingsToFormValues(
         {},
         settings,
-        store.getState()
+        store.getState
       );
       store.dispatch(initialize('default', initialValues));
 
@@ -61,6 +61,7 @@ export default (extensionBridge, store, formConfig) => {
       return settingsTranslated;
     },
     validate() {
+      // debugger
       // Workaround for https://github.com/erikras/redux-form/issues/1477
       // Without this workaround, if the user hasn't changed the form and by default the form
       // is invalid, it will incorrectly report that it is valid.

@@ -67,7 +67,8 @@ export default (
     // maintain some consistency with settingsToFormValues and formValuesToSettings.
     validate: formConfigValidate
       ? (values) => {
-          formConfigValidate({}, values, getFocusedState);
+          // debugger;
+          formConfigValidate({}, values, getFocusedState, 'such a cool param');
         }
       : undefined,
     // ReduxForm will complain with we try to "submit" the form and don't have onSubmit defined.

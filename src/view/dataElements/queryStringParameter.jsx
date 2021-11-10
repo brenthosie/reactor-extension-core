@@ -33,11 +33,11 @@ const QueryStringParameter = () => (
 export default QueryStringParameter;
 
 export const formConfig = {
-  settingsToFormValues(values, settings, state) {
+  settingsToFormValues(values, settings, getState) {
     return {
       ...values,
       ...settings,
-      caseInsensitive: state.meta.isNew || settings.caseInsensitive
+      caseInsensitive: getState().meta.isNew || settings.caseInsensitive
     };
   },
   formValuesToSettings(settings, values) {
