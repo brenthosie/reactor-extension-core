@@ -31,9 +31,14 @@ export default (
   extensionBridge = window.extensionBridge,
   viewProps
 ) => {
-  let viewReducer = (state) => state;
-  if (typeof formConfig.viewReducer === 'function') {
-    viewReducer = formConfig.viewReducer;
+  const { validate: formConfigValidate, viewReducer: _formViewReducer } =
+    formConfig;
+
+  let viewReducer;
+  if (typeof _formViewReducer === 'function') {
+    viewReducer = _formViewReducer;
+  } else {
+    viewReducer = (state) => state;
   }
 
   // TODO: rip this out
@@ -51,7 +56,6 @@ export default (
     ...state
   }))(ViewWrapper);
 
-  const { validate: formConfigValidate } = formConfig;
   const getFocusedState = () => {
     const state = store.getState();
     return {
@@ -67,8 +71,7 @@ export default (
     // maintain some consistency with settingsToFormValues and formValuesToSettings.
     validate: formConfigValidate
       ? (values) => {
-          // debugger;
-          formConfigValidate({}, values, getFocusedState, 'such a cool param');
+          return formConfigValidate({}, values, getFocusedState);
         }
       : undefined,
     // ReduxForm will complain with we try to "submit" the form and don't have onSubmit defined.

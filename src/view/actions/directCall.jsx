@@ -26,7 +26,7 @@ import CloseIcon from '@spectrum-icons/workflow/Close';
 import { createAction } from 'redux-actions';
 import { FieldArray, getFormValues } from 'redux-form';
 import { isPlainObject } from 'is-plain-object';
-import { LOADED_VIEW_DATA_STATE_KEY, getCurrentViewPropsFromState } from '../reduxActions/reducer';
+import { getCurrentViewPropsFromState } from '../reduxActions/reducer';
 import EditorButton from '../components/editorButton';
 import FullWidthField from '../components/fullWidthField';
 import InfoTip from '../components/infoTip';
@@ -75,6 +75,7 @@ const SimpleViewRows = ({ fields }) => {
               component={TextField}
               placeholder="key"
               supportDataElement
+              isRequired
             />
             <span className="codeText">{String.fromCharCode(COLON)}</span>
             <WrappedField
@@ -83,6 +84,7 @@ const SimpleViewRows = ({ fields }) => {
               component={TextField}
               placeholder="value"
               supportDataElement
+              isRequired
             />
             <ActionButton
               aria-label="Delete"
@@ -122,7 +124,6 @@ const DirectCall = ({ dispatch, selectedView, initialValues, meta }) => {
   console.log('initialValues in render:', initialValues);
   return (
     <div className="directCall">
-      <h1>hello world</h1>
       <Tabs
         selectedKey={selectedView}
         onSelectionChange={(view) => dispatch(actions.setViewPreference(view))}
@@ -177,12 +178,13 @@ const DirectCall = ({ dispatch, selectedView, initialValues, meta }) => {
 };
 
 const mapStateToProps = (state) => {
-  const { loadedViewData = {} } = state;
+  const loadedViewData = getCurrentViewPropsFromState(state);
   return {
     ...loadedViewData,
     initialValues: {
-      identifier: 'default identifier',
-      simpleViewObjectEntries: [{ key: 'hello', value: 'world' }]
+      identifier: '',
+      simpleViewObjectEntries: [{}],
+      advancedFormJavascript: ''
     },
     formValues: getFormValues('default')(state)
   };
@@ -208,35 +210,23 @@ const filterEmptySimpleViewRows = (simpleViewObjectEntries) => {
 };
 
 const settingsResembleSimpleForm = (settings) => {
-  try {
-    const detail = JSON.parse(settings.detail);
-    return detail != null && isPlainObject(detail);
-  } catch (e) {
-    // fall through to false
-  }
-
-  return false;
+  return settings.detail != null && isPlainObject(settings.detail);
 };
 
 const decorateSimpleFormSettings = (settings) => {
-  // if (settingsResembleSimpleForm(settings)) {
-  //   const detail = JSON.parse(settings.detail);
-  //   return {
-  //     ...settings,
-  //     simpleViewObjectEntries: Object.entries(detail).map(([key, value]) => ({
-  //       key,
-  //       value
-  //     }))
-  //   };
-  // }
+  if (settingsResembleSimpleForm(settings)) {
+    return {
+      ...settings,
+      simpleViewObjectEntries: Object.entries(settings.detail).map(
+        ([key, value]) => ({
+          key,
+          value
+        })
+      )
+    };
+  }
 
-  return {
-    ...settings,
-    // identifier: 'default identifier',
-    identifier: '',
-    simpleViewObjectEntries: [{ key: 'hello', value: 'world' }]
-    // simpleViewObjectEntries: [{}]
-  };
+  return settings;
 };
 
 const decorateAdvancedFormSettings = (settings) => {
@@ -247,10 +237,7 @@ const decorateAdvancedFormSettings = (settings) => {
     };
   }
 
-  return {
-    ...settings,
-    advancedFormJavascript: ''
-  };
+  return settings;
 };
 
 export const formConfig = {
@@ -277,12 +264,11 @@ export const formConfig = {
       detail = values.advancedFormJavascript;
     }
 
-    const finalSettings = {
+    return {
       ...settings,
       identifier: values.identifier,
       detail
     };
-    return finalSettings;
   },
   validate(errors, values, getState) {
     errors = { ...errors };
@@ -293,13 +279,16 @@ export const formConfig = {
     }
 
     if (props.selectedView === VIEW_MODE_SIMPLE) {
+      errors.simpleViewObjectEntries = [];
       values.simpleViewObjectEntries?.forEach((row, index) => {
-        if (!row.key?.length) {
-          errors[`simpleViewObjectEntries[${index}].key`] = 'This is required';
-        }
-        if (!row.value?.length) {
-          errors[`simpleViewObjectEntries[${index}].value`] =
-            'This is required';
+        errors.simpleViewObjectEntries[index] = {};
+        const isRowEmpty = !row.key?.length && !row.value?.length;
+        if (!isRowEmpty) {
+          if (!row.key?.length) {
+            errors.simpleViewObjectEntries[index].key = 'This is required';
+          } else if (!row?.value?.length) {
+            errors.simpleViewObjectEntries[index].value = 'This is required';
+          }
         }
       });
     } else {
