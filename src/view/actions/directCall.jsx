@@ -35,6 +35,7 @@ import './directCall.styl';
 
 const VIEW_MODE_SIMPLE = 'simple';
 const VIEW_MODE_ADVANCED = 'advanced';
+const ACTION_SET_INITIALIZED = 'actions/directCall/SET_INITIALIZED';
 const ACTION_SET_VIEW_PREFERENCE = 'actions/directCall/SET_VIEW_PREFERENCE';
 const ACTION_DELAY_SAVE = 'actions/directCall/DELAY_SAVE';
 const actions = {
@@ -115,13 +116,80 @@ const SimpleViewRows = ({ fields }) => {
   );
 };
 
-const DirectCall = ({ dispatch, selectedView, initialValues, meta }) => {
+const filterEmptySimpleViewRows = (simpleViewObjectEntries) => {
+  const sanitized = {};
+  if (!simpleViewObjectEntries?.length) {
+    return sanitized;
+  }
+
+  return simpleViewObjectEntries.reduce((entries, nextRow) => {
+    const { key, value } = nextRow;
+    if (key?.length && value?.length) {
+      return {
+        ...entries,
+        [key]: value
+      };
+    }
+    return entries;
+  }, sanitized);
+};
+
+const settingsResembleSimpleForm = (settings) => {
+  return settings.detail != null && isPlainObject(settings.detail);
+};
+
+// Places settings.detail into simpleViewObjectEntries if it should, or
+// gives a default list of an empty item to the form.
+const decorateSimpleFormSettings = (settings) => {
+  if (settingsResembleSimpleForm(settings)) {
+    return {
+      ...settings,
+      simpleViewObjectEntries: Object.entries(settings.detail).map(
+        ([key, value]) => ({
+          key,
+          value
+        })
+      )
+    };
+  }
+
+  return {
+    ...settings,
+    simpleViewObjectEntries: [{}]
+  };
+};
+
+// Places settings.detail into advancedFormJavascript if it should, or
+// loads the default text into the form.
+const decorateAdvancedFormSettings = (settings) => {
+  const defaultTemplate =
+    `// return a JavaScript object containing the event detail to
+    // include to the next rule.
+    var detail = {
+
+    };
+    // It is your responsibility to return a JavaScript object here.
+    return detail;
+  `.replace(/^(?!\n)\s+/gm, '');
+
+  if (!settingsResembleSimpleForm(settings)) {
+    return {
+      ...settings,
+      advancedFormJavascript: settings.detail || defaultTemplate
+    };
+  }
+
+  return {
+    ...settings,
+    advancedFormJavascript: defaultTemplate
+  };
+};
+
+const DirectCall = ({ dispatch, selectedView }) => {
   if (!selectedView) {
     return null;
   }
 
-  console.log('meta in render:', meta);
-  console.log('initialValues in render:', initialValues);
   return (
     <div className="directCall">
       <Tabs
@@ -157,12 +225,12 @@ const DirectCall = ({ dispatch, selectedView, initialValues, meta }) => {
 
             <div className="u-gapTop">
               <p>
-                (optional) The code that you provide in the editor will be run
-                to provide an event detail to the Direct Call.
+                The code that you provide in the editor will be run to provide
+                an event detail to the Direct Call.
               </p>
 
               <WrappedField
-                name="detail"
+                name="advancedFormJavascript"
                 component={EditorButton}
                 language="javascript"
               />
@@ -181,69 +249,36 @@ const mapStateToProps = (state) => {
   const loadedViewData = getCurrentViewPropsFromState(state);
   return {
     ...loadedViewData,
-    initialValues: {
-      identifier: '',
-      simpleViewObjectEntries: [{}],
-      advancedFormJavascript: ''
-    },
     formValues: getFormValues('default')(state)
   };
 };
 export default connect(mapStateToProps)(DirectCall);
 
-const filterEmptySimpleViewRows = (simpleViewObjectEntries) => {
-  const sanitized = {};
-  if (!simpleViewObjectEntries?.length) {
-    return sanitized;
-  }
-
-  return simpleViewObjectEntries.reduce((entries, nextRow) => {
-    const { key, value } = nextRow;
-    if (key?.length && value?.length) {
-      return {
-        ...entries,
-        [key]: value
-      };
-    }
-    return entries;
-  }, sanitized);
-};
-
-const settingsResembleSimpleForm = (settings) => {
-  return settings.detail != null && isPlainObject(settings.detail);
-};
-
-const decorateSimpleFormSettings = (settings) => {
-  if (settingsResembleSimpleForm(settings)) {
-    return {
-      ...settings,
-      simpleViewObjectEntries: Object.entries(settings.detail).map(
-        ([key, value]) => ({
-          key,
-          value
-        })
-      )
-    };
-  }
-
-  return settings;
-};
-
-const decorateAdvancedFormSettings = (settings) => {
-  if (!settingsResembleSimpleForm(settings)) {
-    return {
-      ...settings,
-      advancedFormJavascript: settings.detail
-    };
-  }
-
-  return settings;
-};
-
 export const formConfig = {
-  // todo _settings is probably dumb. how to make this more clear?
-  settingsToFormValues(values, _settings) {
-    let formSettings = { ..._settings };
+  settingsToFormValues(values, moduleSettings, getState, dispatch) {
+    let formSettings = { ...moduleSettings };
+    const loadedViewData = getCurrentViewPropsFromState(getState());
+    if (!loadedViewData.initialized) {
+      if (
+        settingsResembleSimpleForm(moduleSettings) ||
+        moduleSettings.detail == null
+      ) {
+        dispatch({
+          type: ACTION_SET_VIEW_PREFERENCE,
+          payload: VIEW_MODE_SIMPLE
+        });
+      } else {
+        dispatch({
+          type: ACTION_SET_VIEW_PREFERENCE,
+          payload: VIEW_MODE_ADVANCED
+        });
+      }
+
+      dispatch({
+        type: ACTION_SET_INITIALIZED
+      });
+    }
+
     formSettings = decorateSimpleFormSettings(formSettings);
     formSettings = decorateAdvancedFormSettings(formSettings);
 
@@ -299,14 +334,19 @@ export const formConfig = {
   },
   viewReducer: (
     state = {
-      selectedView: VIEW_MODE_SIMPLE,
+      initialized: false,
+      selectedView: null,
       hasDelayedSave: false
     },
     action
   ) => {
     switch (action.type) {
+      case ACTION_SET_INITIALIZED:
+        return {
+          ...state,
+          initialized: true
+        };
       case ACTION_SET_VIEW_PREFERENCE:
-        console.log(action.payload);
         return {
           ...state,
           selectedView: action.payload

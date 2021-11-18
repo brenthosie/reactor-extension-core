@@ -14,7 +14,7 @@
 
 import { getFormValues, initialize, change, submit, isValid } from 'redux-form';
 import { actionCreators } from './reduxActions/bridgeAdapterActions';
-import {LOADED_VIEW_DATA_STATE_KEY} from './reduxActions/reducer';
+import { LOADED_VIEW_DATA_STATE_KEY } from './reduxActions/reducer';
 
 export default (extensionBridge, store, formConfig) => {
   extensionBridge.register({
@@ -33,7 +33,8 @@ export default (extensionBridge, store, formConfig) => {
       const initialValues = formConfig.settingsToFormValues(
         {},
         settings,
-        store.getState
+        store.getState,
+        store.dispatch
       );
       store.dispatch(initialize('default', initialValues));
 
@@ -50,15 +51,18 @@ export default (extensionBridge, store, formConfig) => {
 
       const getFocusedState = () => {
         const state = store.getState();
-        const finalState = {
+        return {
           meta: state.meta,
           [LOADED_VIEW_DATA_STATE_KEY]: state[LOADED_VIEW_DATA_STATE_KEY]
         };
-        return finalState;
       };
 
-      const settingsTranslated = formConfig.formValuesToSettings({}, values, getFocusedState);
-      return settingsTranslated;
+      return formConfig.formValuesToSettings(
+        {},
+        values,
+        getFocusedState,
+        store.dispatch
+      );
     },
     validate() {
       // debugger
