@@ -65,7 +65,6 @@ export default (extensionBridge, store, formConfig) => {
       );
     },
     validate() {
-      // debugger
       // Workaround for https://github.com/erikras/redux-form/issues/1477
       // Without this workaround, if the user hasn't changed the form and by default the form
       // is invalid, it will incorrectly report that it is valid.
@@ -73,19 +72,20 @@ export default (extensionBridge, store, formConfig) => {
 
       store.dispatch(submit('default'));
       return isValid('default')(store.getState());
-    },
-    delayValidatedSave() {
-      if (
-        typeof formConfig.delayValidatedSave === 'function' &&
-        this.validate()
-      ) {
-        const confirmMessage = formConfig.delayValidatedSave();
-        if (typeof confirmMessage === 'string' && confirmMessage.length) {
-          return confirmMessage;
-        }
-
-        return undefined;
-      }
     }
+    // ,
+    // delayValidatedSave() {
+    //   if (
+    //     typeof formConfig.delayValidatedSave === 'function' &&
+    //     this.validate()
+    //   ) {
+    //     const confirmMessage = formConfig.delayValidatedSave();
+    //     if (typeof confirmMessage === 'string' && confirmMessage.length) {
+    //       return confirmMessage;
+    //     }
+    //
+    //     return undefined;
+    //   }
+    // }
   });
 };

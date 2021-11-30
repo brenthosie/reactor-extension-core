@@ -332,6 +332,7 @@ export const formConfig = {
 
     return errors;
   },
+  // A reducer that can be called by bootstrap.jsx and provide view-specific changes.
   viewReducer: (
     state = {
       initialized: false,
